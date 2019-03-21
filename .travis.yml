@@ -1,0 +1,20 @@
+sudo: required
+
+language: sh
+
+services:
+  - docker
+
+before_install:
+  - DOCKER_BASE="$DOCKER_USERNAME/hugo"
+
+script:
+  - docker build -t "$DOCKER_BASE:current" --build-arg GITHUB_TOKEN="$GITHUB_TOKEN" .
+
+after_success:
+  - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - if [ "$TRAVIS_BRANCH" = master ]; then
+      version=$(curl -d "{\"github_token\":\"$GITHUB_TOKEN\"}" 'https://api.github.com/repos/gohugoio/hugo/releases/latest' | grep '"name":' | head -n 1 | cut -d'"' -f4 | cut -d'v' -f2)
+      docker tag "$DOCKER_BASE:current" "$DOCKER_BASE:$version" || exit 1;
+      docker push "$DOCKER_BASE:$version" || exit 1;
+    fi
